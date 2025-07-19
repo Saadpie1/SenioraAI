@@ -12,7 +12,7 @@
           colors: {
             primary: '#f97316',
             dark: '#1a1a1a',
-            surface: '#2a2a2a',
+            surface: '#f3f4f6',
           },
           fontFamily: {
             hand: ['"Patrick Hand"', 'cursive'],
@@ -25,6 +25,7 @@
   <style>
     body {
       font-family: 'Patrick Hand', cursive;
+      font-size: 1.2rem;
     }
     .bubble {
       animation: slide-up 0.3s ease-in-out;
@@ -42,22 +43,23 @@
     }
   </style>
 </head>
-<body class="bg-dark text-white min-h-screen flex flex-col">
-  <div class="flex justify-between items-center px-4 py-2 border-b border-gray-700">
-    <h1 class="text-3xl font-bold">SenioraAI</h1>
+<body class="bg-surface text-black min-h-screen flex flex-col">
+  <div class="flex justify-between items-center px-6 py-4 border-b border-gray-300 bg-white shadow-sm">
+    <h1 class="text-4xl font-bold text-primary">👵 SenioraAI</h1>
     <div class="flex gap-4 items-center">
-      <span id="status" class="text-sm text-gray-400">🔌 Offline</span>
-      <button id="toggleTheme" class="text-sm bg-gray-700 px-3 py-1 rounded hover:bg-gray-600">Toggle Theme</button>
+      <span id="status" class="text-lg text-gray-500">🔌 Offline</span>
+      <button id="toggleTheme" class="text-base bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Toggle Theme</button>
     </div>
   </div>
 
-  <div id="chatBox" class="flex-1 overflow-y-auto px-4 py-6 space-y-4 flex flex-col"></div>
+  <div id="chatBox" class="flex-1 overflow-y-auto px-6 py-6 space-y-4 flex flex-col bg-[#fcfcfc]"></div>
 
-  <div class="w-full max-w-3xl mx-auto px-4 py-3">
-    <div class="flex items-end gap-2">
-      <textarea id="inputBox" rows="1" placeholder="Ask anything..."
-        class="w-full resize-none p-3 rounded-lg bg-[#1f1f1f] border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"></textarea>
-      <button id="sendBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg">Send</button>
+  <div class="w-full max-w-3xl mx-auto px-4 py-6 bg-white border-t border-gray-300 shadow-inner">
+    <div class="flex items-end gap-4">
+      <textarea id="inputBox" rows="1" placeholder="Type your question here..."
+        class="w-full resize-none p-4 rounded-xl border border-gray-300 text-lg focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"></textarea>
+      <button id="sendBtn"
+        class="bg-orange-500 hover:bg-orange-600 text-white text-lg font-semibold px-5 py-3 rounded-xl">Send</button>
     </div>
   </div>
 
@@ -68,13 +70,13 @@
     const status = document.getElementById('status');
     const toggleTheme = document.getElementById('toggleTheme');
 
-    let currentTheme = 'dark';
+    let currentTheme = 'light';
     toggleTheme.onclick = () => {
-      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+      document.body.classList.toggle('bg-surface');
       document.body.classList.toggle('bg-dark');
-      document.body.classList.toggle('bg-white');
-      document.body.classList.toggle('text-white');
       document.body.classList.toggle('text-black');
+      document.body.classList.toggle('text-white');
     };
 
     inputBox.addEventListener('input', () => {
@@ -88,8 +90,10 @@
 
     function createBubble(message, from = 'user') {
       const bubble = document.createElement('div');
-      bubble.className = `bubble max-w-[90%] w-fit rounded-xl px-4 py-3 whitespace-pre-wrap break-words ${
-        from === 'user' ? 'bg-primary self-end text-white' : 'bg-surface self-start text-gray-100'
+      bubble.className = `bubble max-w-[85%] w-fit rounded-2xl px-5 py-4 text-lg whitespace-pre-wrap break-words ${
+        from === 'user'
+          ? 'bg-primary text-white self-end'
+          : 'bg-white border border-gray-200 text-black self-start'
       }`;
       bubble.innerText = message;
       chatBox.appendChild(bubble);
@@ -114,7 +118,7 @@
       }, 300);
 
       try {
-        const res = await fetch("https://steveai-production.up.railway.app/chat", {
+        const res = await fetch("https://5c47b6e5a863.ngrok.io/chat", {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: prompt })
@@ -123,11 +127,11 @@
         const data = await res.json();
         clearInterval(typingInterval);
 
-        botBubble.innerText = data.content || 'Error: No response';
+        botBubble.innerText = data.content || 'Sorry, I didn’t get that.';
 
         const speakBtn = document.createElement('button');
         speakBtn.textContent = '🔊';
-        speakBtn.className = 'ml-2 text-orange-400 hover:text-orange-300';
+        speakBtn.className = 'ml-2 text-orange-500 text-xl hover:text-orange-400';
         speakBtn.onclick = () => {
           const utter = new SpeechSynthesisUtterance(botBubble.innerText);
           speechSynthesis.speak(utter);
@@ -135,20 +139,21 @@
 
         const refreshBtn = document.createElement('button');
         refreshBtn.textContent = '↻';
-        refreshBtn.className = 'ml-2 text-orange-400 hover:text-orange-300';
+        refreshBtn.className = 'ml-2 text-orange-500 text-xl hover:text-orange-400';
         refreshBtn.onclick = () => {
           inputBox.value = prompt;
           sendPrompt();
         };
 
         const btnRow = document.createElement('div');
-        btnRow.className = 'flex justify-end gap-2 mt-1';
+        btnRow.className = 'flex justify-end gap-3 mt-2';
         btnRow.appendChild(speakBtn);
         btnRow.appendChild(refreshBtn);
         botBubble.appendChild(btnRow);
+
       } catch (err) {
         clearInterval(typingInterval);
-        botBubble.innerText = 'Error connecting to server.';
+        botBubble.innerText = '❌ Error connecting to SenioraAI.';
       }
     }
 
