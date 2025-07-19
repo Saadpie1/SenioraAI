@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Steve AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#f97316',
+              dark: '#1a1a1a',
+              surface: '#2a2a2a',
+            },
+            fontFamily: {
+              hand: ['"Patrick Hand"', 'cursive'],
+            },
+          },
+        },
+      };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        font-family: 'Patrick Hand', cursive;
+      }
+      .bubble {
+        animation: slide-up 0.3s ease-in-out;
+        word-wrap: break-word;
+      }
+      @keyframes slide-up {
+        from {
+          transform: translateY(20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-dark text-white min-h-screen flex flex-col">
+    <div class="flex justify-between items-center px-4 py-2 border-b border-gray-700">
+      <h1 class="text-3xl font-bold">Steve AI</h1>
+      <div class="flex gap-4 items-center">
+        <span id="status" class="text-sm text-gray-400">🔌 Offline</span>
+        <button id="toggleTheme" class="text-sm bg-gray-700 px-3 py-1 rounded hover:bg-gray-600">Toggle Theme</button>
+      </div>
+    </div>
+
+    <div id="chatBox" class="flex-1 overflow-y-auto px-4 py-6 space-y-4 flex flex-col"></div>
+
+    <div class="w-full max-w-3xl mx-auto px-4 py-3">
+      <div class="flex items-end gap-2">
+        <textarea id="inputBox" rows="1" placeholder="Ask anything..."
+          class="w-full resize-none p-3 rounded-lg bg-[#1f1f1f] border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"></textarea>
+        <button id="sendBtn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg">Send</button>
+      </div>
+    </div>
+
+    <script>
+      const chatBox = document.getElementById('chatBox');
+      const inputBox = document.getElementById('inputBox');
+      const sendBtn = document.getElementById('sendBtn');
+      const status = document.getElementById('status');
+      const toggleTheme = document.getElementById('toggleTheme');
+
+      let currentTheme = 'dark';
+      toggleTheme.onclick = () => {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.body.classList.toggle('bg-dark');
+        document.body.classList.toggle('bg-white');
+        document.body.classList.toggle('text-white');
+        document.body.classList.toggle('text-black');
+      };
+
+      inputBox.addEventListener('input', () => {
+        inputBox.style.height = 'auto';
+        inputBox.style.height = inputBox.scrollHeight + 'px';
+      });
+
+      function scrollToBottom() {
+        chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+      }
+
+      function createBubble(message, from = 'user') {
+        const bubble = document.createElement('div');
+        bubble.className = `bubble max-w-[90%] w-fit rounded-xl px-4 py-3 whitespace-pre-wrap break-words ${
+          from === 'user' ? 'bg-primary self-end text-white' : 'bg-surface self-start text-gray-100'
+        }`;
+        bubble.innerText = message;
+        chatBox.appendChild(bubble);
+        scrollToBottom();
+        return bubble;
+      }
+
+      async function sendPrompt() {
+        const prompt = inputBox.value.trim();
+        if (!prompt) return;
+
+        inputBox.value = '';
+        inputBox.style.height = 'auto';
+
+        createBubble(prompt, 'user');
+
+        const botBubble = createBubble('Typing |', 'bot');
+        let dots = 0;
+        const typingInterval = setInterval(() => {
+          dots = (dots + 1) % 4;
+          botBubble.innerText = 'Typing' + '.'.repeat(dots);
+        }, 300);
+
+        try {
+          const res = await fetch("https://steveai-production.up.railway.app/chat", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: prompt })
+          });
+
+          const data = await res.json();
+          clearInterval(typingInterval);
+
+          // ✅ Updated to use 'data.content' instead of 'data.response'
+          botBubble.innerText = data.content || 'Error: No response';
+
+          const speakBtn = document.createElement('button');
+          speakBtn.textContent = '🔊';
+          speakBtn.className = 'ml-2 text-orange-400 hover:text-orange-300';
+          speakBtn.onclick = () => {
+            const utter = new SpeechSynthesisUtterance(botBubble.innerText);
+            speechSynthesis.speak(utter);
+          };
+
+          const refreshBtn = document.createElement('button');
+          refreshBtn.textContent = '↻';
+          refreshBtn.className = 'ml-2 text-orange-400 hover:text-orange-300';
+          refreshBtn.onclick = () => {
+            inputBox.value = prompt;
+            sendPrompt();
+          };
+
+          const btnRow = document.createElement('div');
+          btnRow.className = 'flex justify-end gap-2 mt-1';
+          btnRow.appendChild(speakBtn);
+          btnRow.appendChild(refreshBtn);
+          botBubble.appendChild(btnRow);
+        } catch (err) {
+          clearInterval(typingInterval);
+          botBubble.innerText = 'Error connecting to server.';
+        }
+      }
+
+      sendBtn.onclick = sendPrompt;
+      inputBox.addEventListener('keypress', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendPrompt();
+        }
+      });
+
+      function updateStatus() {
+        status.textContent = navigator.onLine ? '🟢 Online' : '🔌 Offline';
+      }
+      window.addEventListener('online', updateStatus);
+      window.addEventListener('offline', updateStatus);
+      updateStatus();
+    </script>
+  </body>
+</html>
